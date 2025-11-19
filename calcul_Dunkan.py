@@ -1,82 +1,119 @@
+#### Importation des modules
+import tkinter as tk
 import matplotlib.pyplot as plt
 import numpy as np
+from PIL import Image, ImageTk
 
-def coef2():
-    #listeUE1 = {r101 : 10,r102 : 10,r103 : 7,r104 : 7,r106 : 5,r108 : 6,r110 : 5,r111 : 4,r112 : 2,r113 : 5,r114 : 5,SAE11 : 20,SAE12 : 20,SAE16 : 7}
-    #listeUE2 = {r101 : 4,r103 : 2,r104 : 8,r105 : 6,r110 : 5,r111 : 5,r112 : 2,r113 : 9,r114 : 9,r115 : 3,SAE13 : 29,SAE16 : 7}
-    #listeUE3 = {r101 : 4,r103 : 2,r106 : 5,r107 : 15,r108 : 0,r109 6 ,r110 : 5,r111 : 5,r112 : 2,r115 : 3,SAE14 : 20,SAE15 : 20,SAE16 : 7}
-
-
-    r101 = float(input("Quelles notes avez vous obtenu pour la ressources r101 dans votre UE1"))
-    r102 = float(input("Quelles notes avez vous obtenu pour la ressources r102 dans votre UE1"))
-    r103 = float(input("Quelles notes avez vous obtenu pour la ressources r103 dans votre UE1"))
-    r104 = float(input("Quelles notes avez vous obtenu pour la ressources r104 dans votre UE1"))
-    r105 = float(input("Quelles notes avez vous obtenu pour la ressources r105 dans votre UE1"))
-    r106 = float(input("Quelles notes avez vous obtenu pour la ressources r106 dans votre UE1"))
-    r107 = float(input("Quelles notes avez vous obtenu pour la ressources r107 dans votre UE1"))
-    r108 = float(input("Quelles notes avez vous obtenu pour la ressources r108 dans votre UE1"))
-    r109 = float(input("Quelles notes avez vous obtenu pour la ressources r109 dans votre UE1"))
-    r110 = float(input("Quelles notes avez vous obtenu pour la ressources r110 dans votre UE1"))
-    r111 = float(input("Quelles notes avez vous obtenu pour la ressources r111 dans votre UE1"))
-    r112 = float(input("Quelles notes avez vous obtenu pour la ressources r112 dans votre UE1"))
-    r113 = float(input("Quelles notes avez vous obtenu pour la ressources r113 dans votre UE1"))
-    r114 = float(input("Quelles notes avez vous obtenu pour la ressources r114 dans votre UE1"))
-    r115 = float(input("Quelles notes avez vous obtenu pour la ressources r115 dans votre UE1"))
-    SAE11 = float(input("Quelles notes avez vous obtenu pour la ressources SAE11 dans votre UE1"))
-    SAE12 = float(input("Quelles notes avez vous obtenu pour la ressources SAE12 dans votre UE1"))
-    SAE13 = float(input("Quelles notes avez vous obtenu pour la ressources SAE13 dans votre UE1"))
-    SAE14 = float(input("Quelles notes avez vous obtenu pour la ressources SAE14 dans votre UE1"))
-    SAE15 = float(input("Quelles notes avez vous obtenu pour la ressources SAE15 dans votre UE1"))
-    SAE16 = float(input("Quelles notes avez vous obtenu pour la ressources SAE16 dans votre UE1"))
-
-    1r101 = 11
-    1r102 = 11
-    1r103 = 15
-    1r104 = 15
-    1r105 = 15
-    1r106 = 13
-    1r107 = 13
-    1r108 = 9
-    1r109 = 9
-    1r110 = 18
-    1r111 = 5
-    1r112 = 6
-    1r113 = 10
-    1r114 = 10
-    1r115 = 10
-    1SAE11 = 15
-    1SAE12 = 12
-    1SAE13 = 9
-    1SAE14 = 10
-    1SAE15 = 12
-    1SAE16 = 18
-
-
-    1listR = [1r101,1r102,1r103,1r104,1r105,1r106,1r107,1r108,1r109,1r110,1r111,1r112,1r113,1r114,1r115,1SAE11,1SAE12,1SAE13,1SAE14,1SAE15,1SAE16]
-    listR = [r101,r102,r103,r104,r105,r106,r107,r108,r109,r110,r111,r112,r113,r114,r115,SAE11,SAE12,SAE13,SAE14,SAE15,SAE16]
+# --- Fonction de calcul ---
+def coef2(notes):
+    alistR = notes
     coefUE1 = [10,10,7,7,0,5,0,6,0,5,4,2,5,5,0,20,20,0,0,0,7]
     coefUE2 = [4,0,2,8,6,0,0,0,0,5,5,2,9,9,3,0,0,29,0,0,7]
     coefUE3 = [4,0,2,0,0,5,15,6,4,5,5,2,0,0,3,0,0,0,20,20,7]
 
-    
-    S1 = np.average(1listR, weights=coefUE1)
-    S2 = np.average(1listR, weights=coefUE2)
-    S3 = np.average(1listR, weights=coefUE3)
-    S_ALL = [S1,S2,S3]
+    S1 = np.average(alistR, weights=coefUE1)
+    S2 = np.average(alistR, weights=coefUE2)
+    S3 = np.average(alistR, weights=coefUE3)
 
-    test = [0,5,10,15,20]
+    def get_color(value):
+        if value >= 10:
+            return 'green'
+        elif value >=8 and value<10:
+            return 'orange'
+        else:
+            return 'red'
 
-    plt.style.use("petroff10")
-    plt.bar(["Ue1","Ue2","Ue3"], S_ALL, width = 0.5, color='b' )
+    colors = [get_color(value) for value in [S1, S2, S3]]
+
+    plt.bar(["UE1","UE2","UE3"], [S1,S2,S3], width = 0.5, color=colors )
     plt.title("Diagramme des UE")
     plt.xlabel("UE")
     plt.ylabel("Notes")
-    plt.show()
-    
+    plt.savefig("Diagrame.jpg")
+    plt.close()  # Ferme le graphique pour éviter les superpositions invisibles quabd on rappuie sur valider par exemple
+
+
+    return S1, S2, S3
+
+### Interface graphique ###
+fenetre = tk.Tk()
+fenetre.geometry("900x650")
+fenetre.title("Fenêtre de calcul de UE")
+fenetre.configure(bg="#dbe8f1")
+
+# Titre
+titre = tk.Label(fenetre, text="Veuillez entrer vos notes pour les ressources et SAE",
+                 font=("Arial", 12, "bold"), bg="#dbe8f1")
+titre.place(x=250, y=10)
+
+# Liste des ressources et SAE
+ressources = ["R"+str(i) for i in range(101,116)]
+sae = ["SAE11","SAE12","SAE13","SAE14","SAE15","SAE16"]
+
+# Entrées
+entrees = []
+
+# Colonne gauche → ressources
+x_res, y_start = 50, 50
+for i, res in enumerate(ressources):
+    tk.Label(fenetre, text=res, width=6, bg="#dbe8f1").place(x=x_res, y=y_start + i*30)
+    entree = tk.Entry(fenetre, width=6)
+    entree.place(x=x_res+50, y=y_start + i*30)
+    entrees.append(entree)
+
+# Colonne droite → SAE
+x_sae = 200
+for i, s in enumerate(sae):
+    tk.Label(fenetre, text=s, width=6, bg="#dbe8f1").place(x=x_sae, y=y_start + i*30)
+    entree = tk.Entry(fenetre, width=6)
+    entree.place(x=x_sae+50, y=y_start + i*30)
+    entrees.append(entree)
+
+# Canvas pour l'image
+canvas = tk.Canvas(fenetre, width=400, height=300)
+canvas.place(x=500, y=300)
+image_on_canvas = None  # Variable globale pour suivre l'image affichée
+
+# Fonction du bouton Valider
+
+# Fonction du bouton Valider
+def recuperer_infos():
+    global image_on_canvas
+    try:
+        notes = [float(e.get()) for e in entrees]
+        S1, S2, S3 = coef2(notes)
+
+        # Supprime l'image précédente du canvas
+        canvas.delete("all")
+
+        # Recharger l'image à chaque fois
+        img = Image.open("Diagrame.jpg")
+        img = img.resize((400, 300))  # Redimensionnement
+        photo = ImageTk.PhotoImage(img)
+
+        # Mettre à jour la référence pour éviter le "garbage collection"
+        canvas.image = photo 
+        image_on_canvas = canvas.create_image(0, 0, image=photo, anchor="nw")
+
+        # Affichage du résultat
+        resultat_label.config(
+            text=f"Résultats :\nUE1 → {S1:.2f}/20\nUE2 → {S2:.2f}/20\nUE3 → {S3:.2f}/20",
+            fg="green"
             
-    print(S1)
-    print(S2)
-    print(S3)
+        )
+    except ValueError:
+        resultat_label.config(
+            text="Attention Erreur : veuillez entrer uniquement des nombres valides.",
+            fg="red"
+        )
 
-coef2()
 
+
+# Bouton Valider
+tk.Button(fenetre, text="Valider", command=recuperer_infos, bg="lightgreen", font=("Arial", 11)).place(x=200, y=550)
+
+# Zone de résultat
+resultat_label = tk.Label(fenetre, text="", font=("Arial", 12), bg="#dbe8f1", justify="left", anchor="nw")
+resultat_label.place(x=200, y=250, width=300, height=200)
+
+fenetre.mainloop()
