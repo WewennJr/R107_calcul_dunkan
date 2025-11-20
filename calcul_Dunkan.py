@@ -1,179 +1,223 @@
 #### Importation des modules
 import tkinter as tk
+from tkinter import ttk
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image, ImageTk
-import pandas as pd  # Importation de pandas
+from openpyxl import load_workbook
+import os
+import sys
 
+# --- CONFIGURATION DES POLICES ---
+FONT_TEXTE = ("Arial", 14)
+FONT_GRAS = ("Arial", 14, "bold")
+FONT_TITRE = ("Arial", 22, "bold")
+FONT_BOUTON = ("Arial", 16, "bold")
 
-# --- Fonction de calcul ---
-def coef2(notes):
-    """
-    Calcule les moyennes des UE en lisant les coefficients
-    depuis le fichier 'Coef_Excel.xlsx'.
-    """
-    alistR = notes
-    nom_fichier_excel = "Coef_Excel.xlsx"
+# --- Utilitaire pour le chemin du fichier ---
+def get_excel_path():
+    dossier_courant = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(dossier_courant, "Coef_Excel.xlsx")
 
+#NOUVELLE FONCTION : Chargement des labels (R101, SAE...)
+def charger_labels_depuis_excel():
+    fichier = get_excel_path()
+    liste_res = []
+    liste_sae = []
+    
     try:
-        df = pd.read_excel(
-            nom_fichier_excel,
-            sheet_name="Feuil1",
-            header=None,
-            names=["Label", "CoefUE1", "CoefUE2", "CoefUE3"],
-        )
-
-        coefUE1 = df["CoefUE1"].tolist()
-        coefUE2 = df["CoefUE2"].tolist()
-        coefUE3 = df["CoefUE3"].tolist()
+        wb = load_workbook(fichier, data_only=True)
+        ws = wb["Feuil1"]
+        
+        # On parcourt les lignes pour trouver les noms (Colonne A / index 0) + Fais le meme nombre d'itération que de matières
+        for row in ws.iter_rows(values_only=True):
+            # On vérifie qu'il y a bien des coefs associés (pour éviter les lignes vides)
+            if row and len(row) >= 4 and isinstance(row[1], (int, float)):
+                label = str(row[0]) # Le nom (ex: R101)
+                
+                # Tri automatique Ressources vs SAE
+                if label.upper().startswith("R"):
+                    liste_res.append(label)
+                elif label.upper().startswith("S"): # Pour SAE
+                    liste_sae.append(label)
+                else:
+                    # Si c'est un autre nom, on le met par défaut dans ressources car SAE situation spécifique
+                    liste_res.append(label)
+                    
+        wb.close()
+        return liste_res, liste_sae
 
     except FileNotFoundError:
-        print(f"Erreur: Le fichier {nom_fichier_excel} est introuvable.")
-        return None, None, None
+        print(f"ERREUR CRITIQUE : Le fichier {fichier} est introuvable au démarrage.")
+        return [], [] # Retourne des listes vides en cas d'erreur
     except Exception as e:
-        print(f"Erreur lors de la lecture du Excel : {e}")
-        return None, None, None
+        print(f"Erreur lecture labels : {e}")
+        return [], []
 
-    # --- Calcul des moyennes pondérées ---
-    S1 = np.average(alistR, weights=coefUE1)
-    S2 = np.average(alistR, weights=coefUE2)
-    S3 = np.average(alistR, weights=coefUE3)
+# --- Fonction de calcul (Calcul des moyennes)
+def coef2(notes):
+    alistR = notes
+    nom_fichier_excel = get_excel_path()
+    
+    coefUE1, coefUE2, coefUE3 = [], [], []
 
-    # --- Création du graphique ---
+    try:
+        wb = load_workbook(nom_fichier_excel, data_only=True)
+        ws = wb["Feuil1"] 
+        for row in ws.iter_rows(values_only=True):
+            if row and len(row) >= 4 and isinstance(row[1], (int, float)):
+                coefUE1.append(row[1])
+                coefUE2.append(row[2])
+                coefUE3.append(row[3])
+        wb.close()
+    except Exception as e:
+        print(f"Erreur Excel lors du calcul : {e}")
+        return None, None, None, None
+
+    try:
+        S1 = np.average(alistR, weights=coefUE1)
+        S2 = np.average(alistR, weights=coefUE2)
+        S3 = np.average(alistR, weights=coefUE3)
+    except Exception as e:
+        print(f"Erreur de calcul numpy : {e}")
+        return None, None, None, None
+
+    # Graphique
     def get_color(value):
-        if value >= 10:
-            return "green"
-        elif value >= 8:
-            return "orange"
-        else:
-            return "red"
+        if value >= 10: return "#4CAF50"
+        elif value >= 8: return "#FF9800"
+        else: return "#F44336"
 
     colors = [get_color(value) for value in [S1, S2, S3]]
-
-    fig, ax = plt.subplots(figsize=(3.6, 2.4), facecolor="white") 
-    ax.bar(["UE1", "UE2", "UE3"], [S1, S2, S3], width=0.5, color=colors)
-    ax.set_title("Diagramme des UE", fontsize=9)
+    
+    fig, ax = plt.subplots(figsize=(5, 4), facecolor="white")
+    bars = ax.bar(["UE1", "UE2", "UE3"], [S1, S2, S3], width=0.5, color=colors)
+    
+    ax.set_title("Moyennes par UE", fontsize=14, fontweight='bold')
+    ax.tick_params(axis='both', which='major', labelsize=12)
     ax.set_ylim(0, 20)
+    
+    for bar in bars:
+        yval = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width()/2, yval + 0.2, round(yval, 2), 
+                ha='center', va='bottom', fontsize=12, fontweight='bold')
 
+    dossier_courant = os.path.dirname(os.path.abspath(__file__))
+    chemin_graphique = os.path.join(dossier_courant, "Diagrame.jpg")
     plt.tight_layout()
-    fig.savefig("Diagrame.jpg", dpi=120, bbox_inches="tight", pad_inches=0, facecolor="white")
+    fig.savefig(chemin_graphique, dpi=100, bbox_inches="tight") 
     plt.close(fig)
 
-    return S1, S2, S3
+    return S1, S2, S3, chemin_graphique
 
+# --- INITIALISATION DES DONNÉES ---
+ressources, sae = charger_labels_depuis_excel()
 
-### Interface graphique ###
+# Si le fichier n'est pas trouvé ou vide
+if not ressources and not sae:
+    print("Attention : Aucune donnée trouvée dans Excel. Vérifiez le fichier.")
+    ressources = ["Erreur"]
+    sae = ["Fichier?"]
+
+# --- INTERFACE GRAPHIQUE ---
 fenetre = tk.Tk()
-fenetre.geometry("900x650")
-fenetre.title("Fenêtre de calcul de UE")
-fenetre.configure(bg="#dbe8f1")
+fenetre.title("Calculateur de Moyennes R&T")
+fenetre.configure(bg="#f0f4f8")
+fenetre.geometry("1300x900") 
+
+fenetre.columnconfigure(0, weight=1)
+fenetre.columnconfigure(1, weight=1)
+fenetre.rowconfigure(1, weight=1)
 
 # Titre
-titre = tk.Label(
-    fenetre,
-    text="Veuillez entrer vos notes pour les ressources et SAE",
-    font=("Arial", 12, "bold"),
-    bg="#dbe8f1",
-)
-titre.place(x=250, y=10)
+tk.Label(fenetre, text="Calcul des Moyennes UE (Via Excel)", 
+         font=FONT_TITRE, bg="#f0f4f8", fg="#333").grid(row=0, column=0, columnspan=2, pady=30)
 
-# Liste des ressources et SAE
-ressources = ["R" + str(i) for i in range(101, 116)]
-sae = ["SAE11", "SAE12", "SAE13", "SAE14", "SAE15", "SAE16"]
-tous_les_labels = ressources + sae
+# --- CADRE GAUCHE : LES NOTES ---
+frame_gauche = tk.Frame(fenetre, bg="#f0f4f8")
+frame_gauche.grid(row=1, column=0, sticky="nsew", padx=40)
 
-# Entrées
-entrees = []
+entrees = [] 
 
-# Colonne gauche → ressources
-x_res, y_start = 50, 50
+# 1. Affichage des Ressources
+tk.Label(frame_gauche, text="Ressources", font=FONT_BOUTON, bg="#f0f4f8", fg="#0056b3").grid(row=0, column=0, pady=15)
+
 for i, res in enumerate(ressources):
-    tk.Label(fenetre, text=res, width=6, bg="#dbe8f1").place(x=x_res, y=y_start + i * 30)
-    entree = tk.Entry(fenetre, width=6)
-    entree.place(x=x_res + 50, y=y_start + i * 30)
+    tk.Label(frame_gauche, text=res, font=FONT_GRAS, bg="#f0f4f8").grid(row=i+1, column=0, padx=10, pady=4, sticky="e")
+    entree = tk.Entry(frame_gauche, width=8, font=FONT_TEXTE, justify="center")
+    entree.grid(row=i+1, column=1, padx=10, pady=4)
     entrees.append(entree)
 
-# Colonne droite → SAE
-x_sae = 200
+# 2. Affichage des SAE
+tk.Label(frame_gauche, text="SAE", font=FONT_BOUTON, bg="#f0f4f8", fg="#0056b3").grid(row=0, column=2, pady=15, padx=(50,0))
+
 for i, s in enumerate(sae):
-    tk.Label(fenetre, text=s, width=6, bg="#dbe8f1").place(x=x_sae, y=y_start + i * 30)
-    entree = tk.Entry(fenetre, width=6)
-    entree.place(x=x_sae + 50, y=y_start + i * 30)
+    tk.Label(frame_gauche, text=s, font=FONT_GRAS, bg="#f0f4f8").grid(row=i+1, column=2, padx=(50,10), pady=4, sticky="e")
+    entree = tk.Entry(frame_gauche, width=8, font=FONT_TEXTE, justify="center")
+    entree.grid(row=i+1, column=3, padx=10, pady=4)
     entrees.append(entree)
 
-# Encadré
-canvas = tk.Canvas(fenetre, width=340, height=240, bg="white", highlightthickness=0) # Hauteur augmentée
-# --- FIN MODIFIÉ ---
-canvas.place(x=540, y=390)
-image_on_canvas = None
+
+# --- CADRE DROIT : RÉSULTATS ---
+frame_droit = tk.Frame(fenetre, bg="white", bd=2, relief="groove")
+frame_droit.grid(row=1, column=1, sticky="nsew", padx=40, pady=40)
+frame_droit.columnconfigure(0, weight=1)
+
+resultat_label = tk.Label(frame_droit, text="En attente de validation...", 
+                          font=FONT_TEXTE, bg="white", justify="left")
+resultat_label.grid(row=0, column=0, pady=30, sticky="w", padx=30)
+
+canvas = tk.Canvas(frame_droit, bg="white", highlightthickness=0)
+canvas.grid(row=1, column=0, sticky="nsew", padx=20, pady=10)
+
+btn_valider = tk.Button(frame_droit, text="VALIDER LES NOTES", 
+                        font=FONT_BOUTON, bg="#4CAF50", fg="white", 
+                        activebackground="green", relief="flat", padx=20, pady=10)
+btn_valider.grid(row=2, column=0, pady=30)
 
 
-# --- Fonction du bouton Valider ---
+# --- FONCTION LOGIQUE ---
 def recuperer_infos():
-    global image_on_canvas
     try:
-        notes = [float(e.get()) for e in entrees]
-        S1, S2, S3 = coef2(notes)
+        notes = []
+        for e in entrees:
+            val = e.get().replace(',', '.') 
+            if val == "": val = "0"
+            notes.append(float(val))
+            
+        result = coef2(notes)
         
-        # Gestion de l'erreur si Excel n'est pas trouvé
-        if S1 is None:
-            resultat_label.config(
-                text="Erreur : Impossible de lire 'Coef_Excel.xlsx'.\n"
-                     "Vérifiez sa présence ou le nom de l'onglet 'Feuil1'.",
-                fg="red"
-            )
+        if result[0] is None:
+            resultat_label.config(text="Erreur: Vérifiez le fichier Excel 'Coef_Excel.xlsx'.", fg="red")
             return
+            
+        S1, S2, S3, chemin_img = result
 
-        # Enregistrer les notes
-        nom_fichier = "Notes.txt"
-        with open(nom_fichier, "w", encoding="utf-8") as fichier:
-            fichier.write("=== Sauvegarde des notes ===\n\n")
-            for k, note in zip(tous_les_labels, notes):
-                fichier.write(f"{k}: {note}\n")
-
-        # --- Afficher le graphique ---
-        canvas.delete("all")
-        img = Image.open("Diagrame.jpg")
-
-        # --- MODIFIÉ ICI (hauteur) ---
-        img = img.resize((340, 240), Image.Resampling.LANCZOS) # Hauteur augmentée
-        # --- FIN MODIFIÉ ---
-        photo = ImageTk.PhotoImage(img)
-
-        canvas.image = photo
-        canvas.create_image(0, 0, image=photo, anchor="nw")
-
-        # Affichage du résultat
+        # --- MODIFICATION ICI : Remplacement du point par un tiret simple ---
         resultat_label.config(
-            text=(
-                f"Résultats :\nUE1 → {S1:.2f}/20\nUE2 → {S2:.2f}/20\nUE3 → {S3:.2f}/20"
-                f"\n\nNotes enregistrées dans '{nom_fichier}'"
-            ),
-            fg="green",
+            text=f"CALCUL RÉUSSI :\n\n"
+                 f"- UE 1 : {S1:.2f} / 20\n"
+                 f"- UE 2 : {S2:.2f} / 20\n"
+                 f"- UE 3 : {S3:.2f} / 20",
+            fg="#333"
         )
+
+        # Affichage Image
+        canvas.delete("all")
+        try:
+            img = Image.open(chemin_img)
+            img = img.resize((600, 450), Image.Resampling.LANCZOS) 
+            photo = ImageTk.PhotoImage(img)
+            canvas.image = photo
+            
+            canvas.config(width=600, height=450)
+            canvas.create_image(300, 225, image=photo)
+        except Exception as e:
+            print(f"Erreur image: {e}")
 
     except ValueError:
-        resultat_label.config(
-            text="Erreur : veuillez entrer uniquement des nombres valides.", fg="red"
-        )
-    except FileNotFoundError:
-        resultat_label.config(
-            text="Erreur : Fichier 'Diagrame.jpg' non trouvé.\nValidez une première fois.",
-            fg="red",
-        )
-    except Exception as e:
-        resultat_label.config(text=f"Une erreur est survenue : {e}", fg="red")
+        resultat_label.config(text="Erreur : Entrez seulement des chiffres.", fg="red")
 
-
-# --- Bouton Valider ---
-tk.Button(
-    fenetre, text="Valider", command=recuperer_infos, bg="lightgreen", font=("Arial", 11)
-).place(x=200, y=550)
-
-# --- Zone de résultat ---
-resultat_label = tk.Label(
-    fenetre, text="", font=("Arial", 12), bg="#dbe8f1", justify="left", anchor="nw"
-)
-resultat_label.place(x=200, y=250, width=320, height=200) # Largeur réduite
+btn_valider.config(command=recuperer_infos)
 
 fenetre.mainloop()
